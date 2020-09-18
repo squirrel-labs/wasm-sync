@@ -41,7 +41,15 @@ impl<'a, T> MutexGuard<'a, T> {
         {
             while (unsafe { &*mutex.locked.get() }).load(Ordering::SeqCst) == 1 {}
         }
-        (unsafe { &*mutex.locked.get() }).store(1, Ordering::SeqCst);
+        while unsafe { &*mutex.locked.get() }.compare_and_swap(0, 1, Ordering::SeqCst) != 0 {
+            // Wait until the lock looks unlocked before retrying
+            while (unsafe { &*mutex.locked.get() }).load(Ordering::SeqCst) == 1 {}
+        }
+        /*assert_eq!(
+            unsafe { &*mutex.locked.get() }.compare_and_swap(0, 1, Ordering::SeqCst),
+            0,
+            "Mutex was entered even though it was still locked"
+        );*/
         Self { mutex }
     }
 }
