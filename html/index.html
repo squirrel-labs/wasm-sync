@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+    <head></head>
+    <body>
+        <script>
+            const n = 2;
+            let workers = [];
+            for (let i = 0; i < n; i++) workers.push(new Worker('worker.js'));
+            const memSize = 1024 * 4;
+            const mem = new WebAssembly.Memory({
+                initial: memSize,
+                maximum: memSize,
+                shared: true
+            });
+            WebAssembly.compileStreaming(fetch('wasm.wasm')).then(
+                mod => {
+                    let i = 0;
+                    for (let worker of workers) {
+                        worker.postMessage([mod, i++, mem]);
+                    }
+                }
+            );
+        </script>
+    </body>
+</html>

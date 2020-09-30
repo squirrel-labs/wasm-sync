@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+
+target=wasm32-unknown-unknown
+
+RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=-zstacksize=131072 -Clink-arg=--demangle" cargo build --target $target -Z build-std=std,panic_abort
+
+if stat html/wasm.wasm &> /dev/null
+then
+    rm -f html/wasm.wasm
+fi
+mv target/$target/debug/wasm_sync.wasm html/wasm.wasm
+
+asmargs='--enable-simd --enable-threads --enable-bulk-memory'
+rm html/wasm.wat
+wasm2wat html/wasm.wasm $asmargs | sed 's/(start $__wasm_init_memory)/(export "__sp" (global 0))/' > html/wasm.wat
+wat2wasm html/wasm.wat $asmargs -o html/wasm.wasm
+
+chromium 'http://localhost:8000/html'
+
+python -m http.server
